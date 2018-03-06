@@ -33,6 +33,7 @@ func TestServerConversation(t *testing.T) {
 		iters  int
 		auth   string
 		nonce  string
+		valid  bool
 		steps  []step
 	}{
 		{
@@ -43,6 +44,7 @@ func TestServerConversation(t *testing.T) {
 			salt64: "QSXCR+Q6sek8bf92",
 			iters:  4096,
 			nonce:  "3rfcNHYJY1ZVvWVs7j",
+			valid:  true,
 			steps: []step{
 				{"n,,n=user,r=fyko+d2lbbFgONRv9qkxdawL", "r=fyko+d2lbbFgONRv9qkxdawL3rfcNHYJY1ZVvWVs7j,s=QSXCR+Q6sek8bf92,i=4096", false},
 				{
@@ -60,6 +62,7 @@ func TestServerConversation(t *testing.T) {
 			salt64: "QSXCR+Q6sek8bf92",
 			iters:  4096,
 			nonce:  "3rfcNHYJY1ZVvWVs7j",
+			valid:  false,
 			steps: []step{
 				{"n,,n=user,r=fyko+d2lbbFgONRv9qkxdawL", "r=fyko+d2lbbFgONRv9qkxdawL3rfcNHYJY1ZVvWVs7j,s=QSXCR+Q6sek8bf92,i=4096", false},
 				{
@@ -77,6 +80,7 @@ func TestServerConversation(t *testing.T) {
 			salt64: "W22ZaJ0SNY7soEsUEjb6gQ==",
 			iters:  4096,
 			nonce:  "%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0",
+			valid:  true,
 			steps: []step{
 				{
 					"n,,n=user,r=rOprNGfwEbeRWgbNEkqO",
@@ -98,6 +102,7 @@ func TestServerConversation(t *testing.T) {
 			salt64: "W22ZaJ0SNY7soEsUEjb6gQ==",
 			iters:  4096,
 			nonce:  "%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0",
+			valid:  false,
 			steps: []step{
 				{
 					"n,,n=user,r=rOprNGfwEbeRWgbNEkqO",
@@ -151,6 +156,10 @@ func TestServerConversation(t *testing.T) {
 			if got != s.out {
 				t.Errorf("%s: step %d: incorrect step message; got '%s', expected '%s'", c.label, i+1, got, s.out)
 			}
+		}
+
+		if c.valid != conv.Valid() {
+			t.Errorf("%s: Conversation Valid() incorrect: got '%v', expected '%v'", c.label, conv.Valid(), c.valid)
 		}
 
 		if !conv.Done() {

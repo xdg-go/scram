@@ -22,6 +22,7 @@ type ServerConversation struct {
 	credentialCB CredentialLookup
 	state        serverState
 	credential   StoredCredentials
+	valid        bool
 	gs2Header    string
 	username     string
 	authID       string
@@ -48,6 +49,11 @@ func (sc *ServerConversation) Step(challenge string) (response string, err error
 // Done ...
 func (sc *ServerConversation) Done() bool {
 	return sc.state == serverDone
+}
+
+// Valid ...
+func (sc *ServerConversation) Valid() bool {
+	return sc.valid
 }
 
 // Username ...
@@ -119,6 +125,8 @@ func (sc *ServerConversation) finalMsg(c2 string) (string, error) {
 	if !hmac.Equal(storedKey, sc.credential.StoredKey) {
 		return "e=invalid-proof", errors.New("challenge proof invalid")
 	}
+
+	sc.valid = true
 
 	// Compute and return server verifier
 	serverSignature := computeHMAC(sc.hashGen, sc.credential.ServerKey, []byte(authMsg))
