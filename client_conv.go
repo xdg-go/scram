@@ -24,6 +24,7 @@ type ClientConversation struct {
 	hashGen  HashGeneratorFcn
 	minIters int
 	state    clientState
+	valid    bool
 	gs2      string
 	nonce    string
 	c1b      string
@@ -51,6 +52,11 @@ func (cc *ClientConversation) Step(challenge string) (response string, err error
 // Done ...
 func (cc *ClientConversation) Done() bool {
 	return cc.state == clientDone
+}
+
+// Valid ...
+func (cc *ClientConversation) Valid() bool {
+	return cc.valid
 }
 
 func (cc *ClientConversation) firstMsg() (string, error) {
@@ -113,11 +119,12 @@ func (cc *ClientConversation) validateServer(s2 string) (string, error) {
 		return "", fmt.Errorf("server error: %s", msg.err)
 	}
 
-	if hmac.Equal(msg.verifier, cc.serveSig) {
-		return "", nil
+	if !hmac.Equal(msg.verifier, cc.serveSig) {
+		return "", errors.New("server validation failed")
 	}
 
-	return "", errors.New("server validation failed")
+	cc.valid = true
+	return "", nil
 }
 
 func (cc *ClientConversation) gs2Header() string {

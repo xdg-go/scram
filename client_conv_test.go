@@ -27,6 +27,7 @@ func TestClientConversation(t *testing.T) {
 		pass  string
 		auth  string
 		nonce string
+		valid bool
 		steps []step
 	}{
 		{
@@ -35,6 +36,7 @@ func TestClientConversation(t *testing.T) {
 			user:  "user",
 			pass:  "pencil",
 			nonce: "fyko+d2lbbFgONRv9qkxdawL",
+			valid: true,
 			steps: []step{
 				{"", "n,,n=user,r=fyko+d2lbbFgONRv9qkxdawL", false},
 				{
@@ -51,6 +53,7 @@ func TestClientConversation(t *testing.T) {
 			user:  "user",
 			pass:  "pencil",
 			nonce: "fyko+d2lbbFgONRv9qkxdawL",
+			valid: false,
 			steps: []step{
 				{"", "n,,n=user,r=fyko+d2lbbFgONRv9qkxdawL", false},
 				{
@@ -67,6 +70,7 @@ func TestClientConversation(t *testing.T) {
 			user:  "user",
 			pass:  "pencil",
 			nonce: "rOprNGfwEbeRWgbNEkqO",
+			valid: true,
 			steps: []step{
 				{"", "n,,n=user,r=rOprNGfwEbeRWgbNEkqO", false},
 				{
@@ -83,6 +87,7 @@ func TestClientConversation(t *testing.T) {
 			user:  "user",
 			pass:  "pencil",
 			nonce: "rOprNGfwEbeRWgbNEkqO",
+			valid: false,
 			steps: []step{
 				{"", "n,,n=user,r=rOprNGfwEbeRWgbNEkqO", false},
 				{
@@ -116,6 +121,10 @@ func TestClientConversation(t *testing.T) {
 			if got != s.out {
 				t.Errorf("%s: step %d: incorrect step message; got '%s', expected '%s'", c.label, i+1, got, s.out)
 			}
+		}
+
+		if c.valid != conv.Valid() {
+			t.Errorf("%s: Conversation Valid() incorrect: got '%v', expected '%v'", c.label, conv.Valid(), c.valid)
 		}
 
 		if !conv.Done() {
