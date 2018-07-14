@@ -1,3 +1,6 @@
+[![GoDoc](https://godoc.org/github.com/xdg/scram?status.svg)](https://godoc.org/github.com/xdg/scram)
+[![Build Status](https://travis-ci.org/xdg/scram.svg?branch=master)](https://travis-ci.org/xdg/scram)
+
 # scram – Go implementation of RFC-5802
 
 ## Synopsis
