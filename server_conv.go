@@ -80,7 +80,7 @@ func (sc *ServerConversation) firstMsg(c1 string) (string, error) {
 	sc.credential, err = sc.credentialCB(msg.username)
 	if err != nil {
 		sc.state = serverDone
-		return "", err
+		return "e=unknown-user", err
 	}
 
 	sc.nonce = msg.nonce + sc.nonceGen()
