@@ -1,10 +1,8 @@
 package scram
 
 import (
-	"fmt"
 	"sync"
 
-	"github.com/xdg/stringprep"
 	"golang.org/x/crypto/pbkdf2"
 )
 
@@ -20,29 +18,16 @@ type Client struct {
 	cache    map[KeyFactors]DerivedKeys
 }
 
-func newClient(username, password, authID string, fcn HashGeneratorFcn) (*Client, error) {
-	var userprep, passprep, authprep string
-	var err error
-
-	if userprep, err = stringprep.SASLprep.Prepare(username); err != nil {
-		return nil, fmt.Errorf("Error SASLprepping username '%s': %v", username, err)
-	}
-	if passprep, err = stringprep.SASLprep.Prepare(password); err != nil {
-		return nil, fmt.Errorf("Error SASLprepping password '%s': %v", password, err)
-	}
-	if authprep, err = stringprep.SASLprep.Prepare(authID); err != nil {
-		return nil, fmt.Errorf("Error SASLprepping authID '%s': %v", authID, err)
-	}
-
+func newClient(username, password, authID string, fcn HashGeneratorFcn) *Client {
 	return &Client{
-		username: userprep,
-		password: passprep,
-		authID:   authprep,
+		username: username,
+		password: password,
+		authID:   authID,
 		minIters: 4096,
 		nonceGen: defaultNonceGenerator,
 		hashGen:  fcn,
 		cache:    make(map[KeyFactors]DerivedKeys),
-	}, nil
+	}
 }
 
 // WithMinIterations ...
