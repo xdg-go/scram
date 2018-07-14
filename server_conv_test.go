@@ -3,171 +3,129 @@ package scram
 import (
 	"encoding/base64"
 	"fmt"
+	"strconv"
 	"testing"
+
+	"github.com/xdg/stringprep"
 )
 
-//    This is a simple example of a SCRAM-SHA-1 authentication exchange
-//    when the client doesn't support channel bindings (username 'user' and
-//    password 'pencil' are used):
-//
-//    C: n,,n=user,r=fyko+d2lbbFgONRv9qkxdawL
-//    S: r=fyko+d2lbbFgONRv9qkxdawL3rfcNHYJY1ZVvWVs7j,s=QSXCR+Q6sek8bf92,
-//       i=4096
-//    C: c=biws,r=fyko+d2lbbFgONRv9qkxdawL3rfcNHYJY1ZVvWVs7j,
-//       p=v0X8v3Bz2T0CJGbJQyF0X+HI4Ts=
-//    S: v=rmF9pqV8S7suAoZWja4dJRkFsKQ=
-
-func TestServerConversation(t *testing.T) {
-	type step struct {
-		in     string
-		out    string
-		hasErr bool
+func TestServerConv(t *testing.T) {
+	cases, err := getTestData("good", "bad-client")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	cases := []struct {
-		label  string
-		hgf    HashGeneratorFcn
-		user   string
-		pass   string
-		salt64 string
-		iters  int
-		auth   string
-		nonce  string
-		valid  bool
-		steps  []step
-	}{
-		{
-			label:  "RFC 5802 example",
-			hgf:    SHA1,
-			user:   "user",
-			pass:   "pencil",
-			salt64: "QSXCR+Q6sek8bf92",
-			iters:  4096,
-			nonce:  "3rfcNHYJY1ZVvWVs7j",
-			valid:  true,
-			steps: []step{
-				{"n,,n=user,r=fyko+d2lbbFgONRv9qkxdawL", "r=fyko+d2lbbFgONRv9qkxdawL3rfcNHYJY1ZVvWVs7j,s=QSXCR+Q6sek8bf92,i=4096", false},
-				{
-					"c=biws,r=fyko+d2lbbFgONRv9qkxdawL3rfcNHYJY1ZVvWVs7j,p=v0X8v3Bz2T0CJGbJQyF0X+HI4Ts=",
-					"v=rmF9pqV8S7suAoZWja4dJRkFsKQ=",
-					false,
-				},
-			},
-		},
-		{
-			label:  "RFC 5802 example with bad proof",
-			hgf:    SHA1,
-			user:   "user",
-			pass:   "pencil",
-			salt64: "QSXCR+Q6sek8bf92",
-			iters:  4096,
-			nonce:  "3rfcNHYJY1ZVvWVs7j",
-			valid:  false,
-			steps: []step{
-				{"n,,n=user,r=fyko+d2lbbFgONRv9qkxdawL", "r=fyko+d2lbbFgONRv9qkxdawL3rfcNHYJY1ZVvWVs7j,s=QSXCR+Q6sek8bf92,i=4096", false},
-				{
-					"c=biws,r=fyko+d2lbbFgONRv9qkxdawL3rfcNHYJY1ZVvWVs7j,p=AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-					"e=invalid-proof",
-					true,
-				},
-			},
-		},
-		{
-			label:  "RFC 7677 example",
-			hgf:    SHA256,
-			user:   "user",
-			pass:   "pencil",
-			salt64: "W22ZaJ0SNY7soEsUEjb6gQ==",
-			iters:  4096,
-			nonce:  "%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0",
-			valid:  true,
-			steps: []step{
-				{
-					"n,,n=user,r=rOprNGfwEbeRWgbNEkqO",
-					"r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096",
-					false,
-				},
-				{
-					"c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=dHzbZapWIk4jUhN+Ute9ytag9zjfMHgsqmmiz7AndVQ=",
-					"v=6rriTRBi23WpRR/wtup+mMhUZUn/dB5nLTJRsjl95G4=",
-					false,
-				},
-			},
-		},
-		{
-			label:  "RFC 7677 example with bad proof",
-			hgf:    SHA256,
-			user:   "user",
-			pass:   "pencil",
-			salt64: "W22ZaJ0SNY7soEsUEjb6gQ==",
-			iters:  4096,
-			nonce:  "%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0",
-			valid:  false,
-			steps: []step{
-				{
-					"n,,n=user,r=rOprNGfwEbeRWgbNEkqO",
-					"r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096",
-					false,
-				},
-				{
-					"c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-					"e=invalid-proof",
-					true,
-				},
-			},
-		},
+	for _, v := range cases {
+		t.Run(v.Label, genServerSubTest(v))
+	}
+}
+
+// Prep user credential callback for the case from Client
+func genServerCallback(c TestCase) (CredentialLookup, error) {
+	salt, err := base64.StdEncoding.DecodeString(c.Salt64)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding salt: %v", err)
 	}
 
-	for _, c := range cases {
-		// Prep user credentials for the case from Client
-		salt, err := base64.StdEncoding.DecodeString(c.salt64)
+	hgf, err := getHGF(c.Digest)
+	if err != nil {
+		return nil, fmt.Errorf("error getting digest for credential callback: %v", err)
+	}
+
+	kf := KeyFactors{Salt: string(salt), Iters: c.Iters}
+
+	var client *Client
+	var userprep string
+	if c.SkipSASLprep {
+		client, err = hgf.NewClientUnprepped(c.User, c.Pass, c.AuthID)
+		userprep = c.User
+	} else {
+		client, err = hgf.NewClient(c.User, c.Pass, c.AuthID)
+		if userprep, err = stringprep.SASLprep.Prepare(c.User); err != nil {
+			return nil, fmt.Errorf("Error SASLprepping username '%s': %v", c.User, err)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error generating client for credential callback: %v", err)
+	}
+
+	stored := client.GetStoredCredentials(kf)
+
+	cbFcn := func(s string) (StoredCredentials, error) {
+		if s == userprep {
+			return stored, nil
+		}
+		return StoredCredentials{}, fmt.Errorf("Unknown user %s", s)
+	}
+
+	return cbFcn, nil
+}
+
+func genServerSubTest(c TestCase) func(t *testing.T) {
+	return func(t *testing.T) {
+		hgf, err := getHGF(c.Digest)
 		if err != nil {
-			t.Fatalf("error decoding salt: '%s'", c.salt64)
+			t.Fatal(err)
 		}
 
-		kf := KeyFactors{Salt: string(salt), Iters: c.iters}
-		client, _ := c.hgf.NewClient(c.user, c.pass, "")
-		stored := client.GetStoredCredentials(kf)
-
-		cbFcn := func(s string) (StoredCredentials, error) {
-			if s == c.user {
-				return stored, nil
-			}
-			return StoredCredentials{}, fmt.Errorf("Unknown user %s", s)
+		cbFcn, err := genServerCallback(c)
+		if err != nil {
+			t.Fatal(err)
 		}
 
-		// TODO check error response from NewServer
-		server, _ := c.hgf.NewServer(cbFcn)
-		if c.nonce != "" {
-			server = server.WithNonceGenerator(func() string { return c.nonce })
+		server, err := hgf.NewServer(cbFcn)
+		if err != nil {
+			t.Fatalf("%s: expected no error from NewServer, but got '%v'", c.Label, err)
+		}
+		if c.ServerNonce != "" {
+			server = server.WithNonceGenerator(func() string { return c.ServerNonce })
 		}
 		conv := server.NewConversation()
 
-		for i, s := range c.steps {
+		for i, s := range serverSteps(c) {
 			if conv.Done() {
-				t.Errorf("%s: Premature end of conversation before step %d", c.label, i+1)
+				t.Errorf("%s: Premature end of conversation before step %d", c.Label, i+1)
+				return
 			}
-			got, err := conv.Step(s.in)
-			if s.hasErr && err == nil {
-				t.Errorf("%s: step %d: expected error but didn't get one", c.label, i+1)
-			} else if !s.hasErr && err != nil {
-				t.Errorf("%s: step %d: expected no error but got '%v'", c.label, i+1, err)
+			got, err := conv.Step(s.Input)
+			if s.IsError && err == nil {
+				t.Errorf("%s: step %d: expected error but didn't get one", c.Label, i+1)
+				return
+			} else if !s.IsError && err != nil {
+				t.Errorf("%s: step %d: expected no error but got '%v'", c.Label, i+1, err)
+				return
 			}
-			if got != s.out {
-				t.Errorf("%s: step %d: incorrect step message; got '%s', expected '%s'", c.label, i+1, got, s.out)
+			if got != s.Expect {
+				t.Errorf("%s: step %d: incorrect step message; got %s, expected %s",
+					c.Label,
+					i+1,
+					strconv.QuoteToASCII(got),
+					strconv.QuoteToASCII(s.Expect),
+				)
+				return
 			}
 		}
 
-		if c.valid != conv.Valid() {
-			t.Errorf("%s: Conversation Valid() incorrect: got '%v', expected '%v'", c.label, conv.Valid(), c.valid)
+		if c.Valid != conv.Valid() {
+			t.Errorf("%s: Conversation Valid() incorrect: got '%v', expected '%v'", c.Label, conv.Valid(), c.Valid)
+			return
 		}
 
 		if !conv.Done() {
-			t.Errorf("%s: Conversation not marked done after last step", c.label)
+			t.Errorf("%s: Conversation not marked done after last step", c.Label)
 		}
 
-		if conv.Username() != c.user {
-			t.Errorf("%s: Conversation didn't record proper username: got '%s', expected '%s'", c.label, conv.username, c.user)
+		var expectedUser string
+		if c.SkipSASLprep {
+			expectedUser = c.User
+		} else {
+			if expectedUser, err = stringprep.SASLprep.Prepare(c.User); err != nil {
+				t.Errorf("Error SASLprepping username '%s': %v", c.User, err)
+			}
+		}
+
+		if conv.Valid() && conv.Username() != expectedUser {
+			t.Errorf("%s: Conversation didn't record proper username: got '%s', expected '%s'", c.Label, conv.Username(), expectedUser)
 		}
 	}
 }
