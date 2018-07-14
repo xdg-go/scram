@@ -69,6 +69,7 @@ func (sc *ServerConversation) AuthID() string {
 func (sc *ServerConversation) firstMsg(c1 string) (string, error) {
 	msg, err := parseClientFirst(c1)
 	if err != nil {
+		sc.state = serverDone
 		return "", err
 	}
 
@@ -78,6 +79,7 @@ func (sc *ServerConversation) firstMsg(c1 string) (string, error) {
 
 	sc.credential, err = sc.credentialCB(msg.username)
 	if err != nil {
+		sc.state = serverDone
 		return "", err
 	}
 
