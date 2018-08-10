@@ -19,8 +19,9 @@ import (
 // crypto/rand.
 type NonceGeneratorFcn func() string
 
-// DerivedKeys ...
-type DerivedKeys struct {
+// derivedKeys collects the three cryptographically derived values
+// into one struct for caching.
+type derivedKeys struct {
 	ClientKey []byte
 	StoredKey []byte
 	ServerKey []byte

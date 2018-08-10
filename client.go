@@ -34,7 +34,7 @@ type Client struct {
 	minIters int
 	nonceGen NonceGeneratorFcn
 	hashGen  HashGeneratorFcn
-	cache    map[KeyFactors]DerivedKeys
+	cache    map[KeyFactors]derivedKeys
 }
 
 func newClient(username, password, authzID string, fcn HashGeneratorFcn) *Client {
@@ -45,7 +45,7 @@ func newClient(username, password, authzID string, fcn HashGeneratorFcn) *Client
 		minIters: 4096,
 		nonceGen: defaultNonceGenerator,
 		hashGen:  fcn,
-		cache:    make(map[KeyFactors]DerivedKeys),
+		cache:    make(map[KeyFactors]derivedKeys),
 	}
 }
 
@@ -81,7 +81,7 @@ func (c *Client) NewConversation() *ClientConversation {
 	}
 }
 
-func (c *Client) GetDerivedKeys(kf KeyFactors) DerivedKeys {
+func (c *Client) getDerivedKeys(kf KeyFactors) derivedKeys {
 	dk, ok := c.getCache(kf)
 	if !ok {
 		dk = c.computeKeys(kf)
@@ -95,7 +95,7 @@ func (c *Client) GetDerivedKeys(kf KeyFactors) DerivedKeys {
 // user.  These values are what the Server credential lookup function must
 // return for a given username.
 func (c *Client) GetStoredCredentials(kf KeyFactors) StoredCredentials {
-	dk := c.GetDerivedKeys(kf)
+	dk := c.getDerivedKeys(kf)
 	return StoredCredentials{
 		KeyFactors: kf,
 		StoredKey:  dk.StoredKey,
@@ -103,26 +103,26 @@ func (c *Client) GetStoredCredentials(kf KeyFactors) StoredCredentials {
 	}
 }
 
-func (c *Client) computeKeys(kf KeyFactors) DerivedKeys {
+func (c *Client) computeKeys(kf KeyFactors) derivedKeys {
 	h := c.hashGen()
 	saltedPassword := pbkdf2.Key([]byte(c.password), []byte(kf.Salt), kf.Iters, h.Size(), c.hashGen)
 	clientKey := computeHMAC(c.hashGen, saltedPassword, []byte("Client Key"))
 
-	return DerivedKeys{
+	return derivedKeys{
 		ClientKey: clientKey,
 		StoredKey: computeHash(c.hashGen, clientKey),
 		ServerKey: computeHMAC(c.hashGen, saltedPassword, []byte("Server Key")),
 	}
 }
 
-func (c *Client) getCache(kf KeyFactors) (DerivedKeys, bool) {
+func (c *Client) getCache(kf KeyFactors) (derivedKeys, bool) {
 	c.RLock()
 	defer c.RUnlock()
 	dk, ok := c.cache[kf]
 	return dk, ok
 }
 
-func (c *Client) setCache(kf KeyFactors, dk DerivedKeys) {
+func (c *Client) setCache(kf KeyFactors, dk derivedKeys) {
 	c.Lock()
 	defer c.Unlock()
 	c.cache[kf] = dk
