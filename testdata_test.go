@@ -19,7 +19,7 @@ type TestCase struct {
 	Digest       string
 	User         string
 	Pass         string
-	AuthID       string
+	AuthzID      string
 	SkipSASLprep bool
 	Salt64       string
 	Iters        int

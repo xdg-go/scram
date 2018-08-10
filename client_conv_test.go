@@ -31,9 +31,9 @@ func genClientSubTest(c TestCase) func(t *testing.T) {
 
 		var client *Client
 		if c.SkipSASLprep {
-			client, err = hgf.NewClientUnprepped(c.User, c.Pass, c.AuthID)
+			client, err = hgf.NewClientUnprepped(c.User, c.Pass, c.AuthzID)
 		} else {
-			client, err = hgf.NewClient(c.User, c.Pass, c.AuthID)
+			client, err = hgf.NewClient(c.User, c.Pass, c.AuthzID)
 		}
 		if err != nil {
 			t.Errorf("%s: expected no error from NewClient, but got '%v'", c.Label, err)

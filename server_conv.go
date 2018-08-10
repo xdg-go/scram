@@ -33,7 +33,7 @@ type ServerConversation struct {
 	valid        bool
 	gs2Header    string
 	username     string
-	authID       string
+	authzID      string
 	nonce        string
 	c1b          string
 	s1           string
@@ -74,11 +74,11 @@ func (sc *ServerConversation) Username() string {
 	return sc.username
 }
 
-// AuthID returns the (optional) client-provided authorization identity, if
+// AuthzID returns the (optional) client-provided authorization identity, if
 // any.  If one was not provided, it returns the empty string.  This is valid
 // to call if the first conversation Step() is successful.
-func (sc *ServerConversation) AuthID() string {
-	return sc.authID
+func (sc *ServerConversation) AuthzID() string {
+	return sc.authzID
 }
 
 func (sc *ServerConversation) firstMsg(c1 string) (string, error) {
@@ -90,7 +90,7 @@ func (sc *ServerConversation) firstMsg(c1 string) (string, error) {
 
 	sc.gs2Header = msg.gs2Header
 	sc.username = msg.username
-	sc.authID = msg.authID
+	sc.authzID = msg.authzID
 
 	sc.credential, err = sc.credentialCB(msg.username)
 	if err != nil {

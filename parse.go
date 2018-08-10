@@ -16,7 +16,7 @@ import (
 
 type c1Msg struct {
 	gs2Header string
-	authID    string
+	authzID   string
 	username  string
 	nonce     string
 	c1b       string
@@ -103,14 +103,14 @@ func parseClientFirst(c1 string) (msg c1Msg, err error) {
 
 	// 'a' field is optional
 	if len(fields[1]) > 0 {
-		msg.authID, err = parseField(fields[1], "a")
+		msg.authzID, err = parseField(fields[1], "a")
 		if err != nil {
 			return
 		}
 	}
 
 	// Recombine and save the gs2 header
-	msg.gs2Header = gs2flag + "," + msg.authID + ","
+	msg.gs2Header = gs2flag + "," + msg.authzID + ","
 
 	// Check for unsupported extensions field "m".
 	if strings.HasPrefix(fields[2], "m=") {

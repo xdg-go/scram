@@ -31,9 +31,9 @@ var SHA256 HashGeneratorFcn = func() hash.Hash { return sha256.New() }
 
 // NewClient constructs a SCRAM client component based on a given hash.Hash
 // factory receiver.  This constructor will normalize the username, password
-// and authID via the SASLprep algorithm, as recommended by RFC-5802.  If
+// and authzID via the SASLprep algorithm, as recommended by RFC-5802.  If
 // SASLprep fails, the method returns an error.
-func (f HashGeneratorFcn) NewClient(username, password, authID string) (*Client, error) {
+func (f HashGeneratorFcn) NewClient(username, password, authzID string) (*Client, error) {
 	var userprep, passprep, authprep string
 	var err error
 
@@ -43,8 +43,8 @@ func (f HashGeneratorFcn) NewClient(username, password, authID string) (*Client,
 	if passprep, err = stringprep.SASLprep.Prepare(password); err != nil {
 		return nil, fmt.Errorf("Error SASLprepping password '%s': %v", password, err)
 	}
-	if authprep, err = stringprep.SASLprep.Prepare(authID); err != nil {
-		return nil, fmt.Errorf("Error SASLprepping authID '%s': %v", authID, err)
+	if authprep, err = stringprep.SASLprep.Prepare(authzID); err != nil {
+		return nil, fmt.Errorf("Error SASLprepping authzID '%s': %v", authzID, err)
 	}
 
 	return newClient(userprep, passprep, authprep, f), nil
@@ -53,8 +53,8 @@ func (f HashGeneratorFcn) NewClient(username, password, authID string) (*Client,
 // NewClientUnprepped acts like NewClient, except none of the arguments will
 // be normalized via SASLprep.  This is not generally recommended, but is
 // provided for users that may have custom normalization needs.
-func (f HashGeneratorFcn) NewClientUnprepped(username, password, authID string) (*Client, error) {
-	return newClient(username, password, authID, f), nil
+func (f HashGeneratorFcn) NewClientUnprepped(username, password, authzID string) (*Client, error) {
+	return newClient(username, password, authzID, f), nil
 }
 
 // NewServer constructs a SCRAM server component based on a given hash.Hash

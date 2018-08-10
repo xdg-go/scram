@@ -43,10 +43,10 @@ func genServerCallback(c TestCase) (CredentialLookup, error) {
 	var client *Client
 	var userprep string
 	if c.SkipSASLprep {
-		client, err = hgf.NewClientUnprepped(c.User, c.Pass, c.AuthID)
+		client, err = hgf.NewClientUnprepped(c.User, c.Pass, c.AuthzID)
 		userprep = c.User
 	} else {
-		client, err = hgf.NewClient(c.User, c.Pass, c.AuthID)
+		client, err = hgf.NewClient(c.User, c.Pass, c.AuthzID)
 		if userprep, err = stringprep.SASLprep.Prepare(c.User); err != nil {
 			return nil, fmt.Errorf("Error SASLprepping username '%s': %v", c.User, err)
 		}

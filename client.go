@@ -30,18 +30,18 @@ type Client struct {
 	sync.RWMutex
 	username string
 	password string
-	authID   string
+	authzID  string
 	minIters int
 	nonceGen NonceGeneratorFcn
 	hashGen  HashGeneratorFcn
 	cache    map[KeyFactors]DerivedKeys
 }
 
-func newClient(username, password, authID string, fcn HashGeneratorFcn) *Client {
+func newClient(username, password, authzID string, fcn HashGeneratorFcn) *Client {
 	return &Client{
 		username: username,
 		password: password,
-		authID:   authID,
+		authzID:  authzID,
 		minIters: 4096,
 		nonceGen: defaultNonceGenerator,
 		hashGen:  fcn,

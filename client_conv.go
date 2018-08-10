@@ -142,8 +142,8 @@ func (cc *ClientConversation) validateServer(s2 string) (string, error) {
 }
 
 func (cc *ClientConversation) gs2Header() string {
-	if cc.client.authID == "" {
+	if cc.client.authzID == "" {
 		return "n,,"
 	}
-	return fmt.Sprintf("n,%s,", encodeName(cc.client.authID))
+	return fmt.Sprintf("n,%s,", encodeName(cc.client.authzID))
 }
