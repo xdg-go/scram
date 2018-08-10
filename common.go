@@ -56,9 +56,6 @@ type StoredCredentials struct {
 // StoredCredentials.
 type CredentialLookup func(string) (StoredCredentials, error)
 
-// AuthProxyLookup ...
-type AuthProxyLookup func(string, string) bool
-
 func defaultNonceGenerator() string {
 	raw := make([]byte, 24)
 	nonce := make([]byte, base64.StdEncoding.EncodedLen(len(raw)))
