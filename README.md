@@ -18,12 +18,11 @@ Channel binding and extensions are not (yet) supported.
 
 ### Client side
 
-    package scram_test
+    package main
 
     import "github.com/xdg/scram"
 
-
-    func Example() {
+    func main() {
         // Get Client with username, password and (optional) authorization ID.
         clientSHA1, err := scram.SHA1.NewClient("mulder", "trustno1", "")
         if err != nil {
