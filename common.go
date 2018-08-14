@@ -28,8 +28,9 @@ type derivedKeys struct {
 }
 
 // KeyFactors represent the two server-provided factors needed to compute
-// client credentials for authentication.  Salt is base64 encoded so that
-// KeyFactors can be used as a map key for cached credentials.
+// client credentials for authentication.  Salt is decoded bytes (i.e. not
+// base64), but in string form so that KeyFactors can be used as a map key for
+// cached credentials.
 type KeyFactors struct {
 	Salt  string
 	Iters int
