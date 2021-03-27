@@ -1,6 +1,6 @@
 module github.com/xdg-go/scram
 
-go 1.14
+go 1.11
 
 require (
 	github.com/xdg-go/stringprep v1.0.1
