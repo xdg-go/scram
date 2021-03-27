@@ -1,4 +1,6 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/xdg-go/scram.svg)](https://pkg.go.dev/github.com/xdg-go/scram)
+[![Go Report Card](https://goreportcard.com/badge/github.com/xdg-go/scram)](https://goreportcard.com/report/github.com/xdg-go/scram)
+[![Github Actions](https://github.com/xdg-go/scram/actions/workflows/test.yml/badge.svg)](https://github.com/xdg-go/scram/actions/workflows/test.yml)
 
 # scram – Go implementation of RFC-5802
 
