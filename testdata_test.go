@@ -41,6 +41,8 @@ func getHGF(s string) (HashGeneratorFcn, error) {
 		return SHA1, nil
 	case "SHA-256":
 		return SHA256, nil
+	case "SHA-512":
+		return SHA512, nil
 	default:
 		panic(fmt.Sprintf("Unknown hash function '%s'", s))
 	}
