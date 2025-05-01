@@ -110,7 +110,10 @@ func (cc *ClientConversation) finalMsg(s1 string) (string, error) {
 	authMsg := cc.c1b + "," + s1 + "," + c2wop
 
 	// Get derived keys from client cache
-	dk := cc.client.getDerivedKeys(KeyFactors{Salt: string(msg.salt), Iters: msg.iters})
+	dk, err := cc.client.getDerivedKeys(KeyFactors{Salt: string(msg.salt), Iters: msg.iters})
+	if err != nil {
+		return "", err
+	}
 
 	// Create proof as clientkey XOR clientsignature
 	clientSignature := computeHMAC(cc.hashGen, dk.StoredKey, []byte(authMsg))

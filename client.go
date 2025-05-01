@@ -8,8 +8,6 @@ package scram
 
 import (
 	"sync"
-
-	"github.com/xdg-go/pbkdf2"
 )
 
 // Client implements the client side of SCRAM authentication.  It holds
@@ -81,38 +79,45 @@ func (c *Client) NewConversation() *ClientConversation {
 	}
 }
 
-func (c *Client) getDerivedKeys(kf KeyFactors) derivedKeys {
+func (c *Client) getDerivedKeys(kf KeyFactors) (derivedKeys, error) {
 	dk, ok := c.getCache(kf)
 	if !ok {
-		dk = c.computeKeys(kf)
+		var err error
+		dk, err = c.computeKeys(kf)
+		if err != nil {
+			return derivedKeys{}, err
+		}
 		c.setCache(kf, dk)
 	}
-	return dk
+	return dk, nil
 }
 
 // GetStoredCredentials takes a salt and iteration count structure and
 // provides the values that must be stored by a server to authentication a
 // user.  These values are what the Server credential lookup function must
 // return for a given username.
-func (c *Client) GetStoredCredentials(kf KeyFactors) StoredCredentials {
-	dk := c.getDerivedKeys(kf)
+func (c *Client) GetStoredCredentials(kf KeyFactors) (StoredCredentials, error) {
+	dk, err := c.getDerivedKeys(kf)
 	return StoredCredentials{
 		KeyFactors: kf,
 		StoredKey:  dk.StoredKey,
 		ServerKey:  dk.ServerKey,
-	}
+	}, err
 }
 
-func (c *Client) computeKeys(kf KeyFactors) derivedKeys {
+func (c *Client) computeKeys(kf KeyFactors) (derivedKeys, error) {
 	h := c.hashGen()
-	saltedPassword := pbkdf2.Key([]byte(c.password), []byte(kf.Salt), kf.Iters, h.Size(), c.hashGen)
+	saltedPassword, err := pbkdf2Key(c.hashGen, c.password, []byte(kf.Salt), kf.Iters, h.Size())
+	if err != nil {
+		return derivedKeys{}, err
+	}
 	clientKey := computeHMAC(c.hashGen, saltedPassword, []byte("Client Key"))
 
 	return derivedKeys{
 		ClientKey: clientKey,
 		StoredKey: computeHash(c.hashGen, clientKey),
 		ServerKey: computeHMAC(c.hashGen, saltedPassword, []byte("Server Key")),
-	}
+	}, nil
 }
 
 func (c *Client) getCache(kf KeyFactors) (derivedKeys, bool) {
