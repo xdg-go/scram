@@ -55,7 +55,10 @@ func genServerCallback(c TestCase) (CredentialLookup, error) {
 		return nil, fmt.Errorf("error generating client for credential callback: %v", err)
 	}
 
-	stored := client.GetStoredCredentials(kf)
+	stored, err := client.GetStoredCredentials(kf)
+	if err != nil {
+		return nil, fmt.Errorf("error getting stored credentials: %w", err)
+	}
 
 	cbFcn := func(s string) (StoredCredentials, error) {
 		if s == userprep {
