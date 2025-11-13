@@ -27,16 +27,17 @@ const (
 // conversation with a server.  A new conversation must be created for
 // each authentication attempt.
 type ClientConversation struct {
-	client   *Client
-	nonceGen NonceGeneratorFcn
-	hashGen  HashGeneratorFcn
-	minIters int
-	state    clientState
-	valid    bool
-	gs2      string
-	nonce    string
-	c1b      string
-	serveSig []byte
+	client         *Client
+	nonceGen       NonceGeneratorFcn
+	hashGen        HashGeneratorFcn
+	minIters       int
+	state          clientState
+	valid          bool
+	gs2            string
+	nonce          string
+	c1b            string
+	serveSig       []byte
+	channelBinding ChannelBinding
 }
 
 // Step takes a string provided from a server (or just an empty string for the
@@ -99,10 +100,16 @@ func (cc *ClientConversation) finalMsg(s1 string) (string, error) {
 		return "", fmt.Errorf("server requested too few iterations (%d)", msg.iters)
 	}
 
+	// Create channel binding data: gs2-header + channel-binding-data
+	cbindData := []byte(cc.gs2)
+	if cc.channelBinding.IsSupported() {
+		cbindData = append(cbindData, cc.channelBinding.Data...)
+	}
+
 	// Create client-final-message-without-proof
 	c2wop := fmt.Sprintf(
 		"c=%s,r=%s",
-		base64.StdEncoding.EncodeToString([]byte(cc.gs2)),
+		base64.StdEncoding.EncodeToString(cbindData),
 		cc.nonce,
 	)
 
@@ -145,8 +152,20 @@ func (cc *ClientConversation) validateServer(s2 string) (string, error) {
 }
 
 func (cc *ClientConversation) gs2Header() string {
-	if cc.client.authzID == "" {
-		return "n,,"
+	var cbFlag string
+
+	if cc.channelBinding.IsSupported() {
+		cbFlag = fmt.Sprintf("p=%s", cc.channelBinding.Type)
+	} else {
+		cbFlag = "n"
+		// TODO: Implement "y" flag logic for mechanism negotiation scenarios
+		// where client supports channel binding but thinks server doesn't
 	}
-	return fmt.Sprintf("n,%s,", encodeName(cc.client.authzID))
+
+	authzPart := ""
+	if cc.client.authzID != "" {
+		authzPart = encodeName(cc.client.authzID)
+	}
+
+	return fmt.Sprintf("%s,%s,", cbFlag, authzPart)
 }

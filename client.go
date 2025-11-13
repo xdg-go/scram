@@ -79,6 +79,23 @@ func (c *Client) NewConversation() *ClientConversation {
 	}
 }
 
+// NewConversationWithChannelBinding constructs a client-side authentication
+// conversation with channel binding for SCRAM-PLUS authentication. Channel
+// binding is connection-specific, so a new conversation should be created for
+// each connection being authenticated. Conversations cannot be reused, so this
+// must be called for each new authentication attempt.
+func (c *Client) NewConversationWithChannelBinding(cb ChannelBinding) *ClientConversation {
+	c.RLock()
+	defer c.RUnlock()
+	return &ClientConversation{
+		client:         c,
+		nonceGen:       c.nonceGen,
+		hashGen:        c.hashGen,
+		minIters:       c.minIters,
+		channelBinding: cb,
+	}
+}
+
 func (c *Client) getDerivedKeys(kf KeyFactors) (derivedKeys, error) {
 	dk, ok := c.getCache(kf)
 	if !ok {

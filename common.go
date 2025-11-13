@@ -58,8 +58,8 @@ type StoredCredentials struct {
 // StoredCredentials.
 type CredentialLookup func(string) (StoredCredentials, error)
 
-// Server error values as defined in RFC-5802 and RFC-7677.
-// These are returned by the server in error responses as "e=<value>".
+// Server error values as defined in RFC-5802 and RFC-7677. These are returned
+// by the server in error responses as "e=<value>".
 const (
 	// ErrInvalidEncoding indicates the client message had invalid encoding
 	ErrInvalidEncoding = "e=invalid-encoding"
@@ -74,7 +74,8 @@ const (
 	ErrChannelBindingsDontMatch = "e=channel-bindings-dont-match"
 
 	// ErrServerDoesSupportChannelBinding indicates server does support channel
-	// binding. This is returned if a downgrade attack is detected.
+	// binding. This is returned if a downgrade attack is detected or if the
+	// client does not support binding and channel binding is required.
 	ErrServerDoesSupportChannelBinding = "e=server-does-support-channel-binding"
 
 	// ErrChannelBindingNotSupported indicates channel binding is not supported

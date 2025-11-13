@@ -15,11 +15,13 @@ import (
 )
 
 type c1Msg struct {
-	gs2Header string
-	authzID   string
-	username  string
-	nonce     string
-	c1b       string
+	gs2Header      string
+	gs2BindFlag    string // "n", "y", or "p"
+	channelBinding string // channel binding type name if gs2BindFlag is "p"
+	authzID        string
+	username       string
+	nonce          string
+	c1b            string
 }
 
 type c2Msg struct {
@@ -48,16 +50,28 @@ func parseField(s, k string) (string, error) {
 	return t, nil
 }
 
-func parseGS2Flag(s string) (string, error) {
-	if s[0] == 'p' {
-		return "", fmt.Errorf("channel binding requested but not supported")
+func parseGS2Flag(s string) (flag string, cbType string, err error) {
+	if strings.HasPrefix(s, "p=") {
+		// Extract channel binding type
+		cbType = strings.TrimPrefix(s, "p=")
+		if len(cbType) == 0 {
+			return "", "", errors.New("channel binding type missing after 'p='")
+		}
+		// Validate cb-name format: 1*(ALPHA / DIGIT / "." / "-")
+		for _, r := range cbType {
+			if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') ||
+				(r >= '0' && r <= '9') || r == '.' || r == '-') {
+				return "", "", fmt.Errorf("invalid character in channel binding type: %c", r)
+			}
+		}
+		return "p", cbType, nil
 	}
 
 	if s == "n" || s == "y" {
-		return s, nil
+		return s, "", nil
 	}
 
-	return "", fmt.Errorf("error parsing '%s' for gs2 flag", s)
+	return "", "", fmt.Errorf("error parsing '%s' for gs2 flag", s)
 }
 
 func parseFieldBase64(s, k string) ([]byte, error) {
@@ -96,7 +110,7 @@ func parseClientFirst(c1 string) (msg c1Msg, err error) {
 		return
 	}
 
-	gs2flag, err := parseGS2Flag(fields[0])
+	msg.gs2BindFlag, msg.channelBinding, err = parseGS2Flag(fields[0])
 	if err != nil {
 		return
 	}
@@ -110,7 +124,8 @@ func parseClientFirst(c1 string) (msg c1Msg, err error) {
 	}
 
 	// Recombine and save the gs2 header
-	msg.gs2Header = gs2flag + "," + msg.authzID + ","
+	gs2flag := fields[0]
+	msg.gs2Header = gs2flag + "," + fields[1] + ","
 
 	// Check for unsupported extensions field "m".
 	if strings.HasPrefix(fields[2], "m=") {
