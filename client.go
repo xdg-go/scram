@@ -79,6 +79,51 @@ func (c *Client) NewConversation() *ClientConversation {
 	}
 }
 
+// NewConversationAdvertisingChannelBinding constructs a client-side
+// authentication conversation that advertises channel binding support without
+// using it. This generates the "y" GS2 flag, indicating the client supports
+// channel binding but the server did not advertise a PLUS variant mechanism.
+//
+// This helps detect downgrade attacks where a MITM strips PLUS mechanism
+// advertisements from the server's mechanism list. If the server actually
+// advertised PLUS variants, it will reject the "y" flag as a downgrade attack.
+//
+// Use this when:
+//   - Your application supports channel binding (has access to TLS connection state)
+//   - SASL mechanism negotiation showed the server does NOT advertise PLUS variants
+//     (e.g., server advertised "SCRAM-SHA-256" but not "SCRAM-SHA-256-PLUS")
+//
+// Conversations cannot be reused, so this must be called for each new
+// authentication attempt.
+func (c *Client) NewConversationAdvertisingChannelBinding() *ClientConversation {
+	c.RLock()
+	defer c.RUnlock()
+	return &ClientConversation{
+		client:                  c,
+		nonceGen:                c.nonceGen,
+		hashGen:                 c.hashGen,
+		minIters:                c.minIters,
+		advertiseChannelBinding: true,
+	}
+}
+
+// NewConversationWithChannelBinding constructs a client-side authentication
+// conversation with channel binding for SCRAM-PLUS authentication. Channel
+// binding is connection-specific, so a new conversation should be created for
+// each connection being authenticated. Conversations cannot be reused, so this
+// must be called for each new authentication attempt.
+func (c *Client) NewConversationWithChannelBinding(cb ChannelBinding) *ClientConversation {
+	c.RLock()
+	defer c.RUnlock()
+	return &ClientConversation{
+		client:         c,
+		nonceGen:       c.nonceGen,
+		hashGen:        c.hashGen,
+		minIters:       c.minIters,
+		channelBinding: cb,
+	}
+}
+
 func (c *Client) getDerivedKeys(kf KeyFactors) (derivedKeys, error) {
 	dk, ok := c.getCache(kf)
 	if !ok {
@@ -150,5 +195,4 @@ func (c *Client) setCache(kf KeyFactors, dk derivedKeys) {
 	c.Lock()
 	defer c.Unlock()
 	c.cache[kf] = dk
-	return
 }

@@ -47,6 +47,9 @@ func genServerCallback(c TestCase) (CredentialLookup, error) {
 		userprep = c.User
 	} else {
 		client, err = hgf.NewClient(c.User, c.Pass, c.AuthzID)
+		if err != nil {
+			return nil, fmt.Errorf("error creating client for credential callback: %v", err)
+		}
 		if userprep, err = stringprep.SASLprep.Prepare(c.User); err != nil {
 			return nil, fmt.Errorf("Error SASLprepping username '%s': %v", c.User, err)
 		}

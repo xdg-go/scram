@@ -58,8 +58,8 @@ type StoredCredentials struct {
 // StoredCredentials.
 type CredentialLookup func(string) (StoredCredentials, error)
 
-// Server error values as defined in RFC-5802 and RFC-7677.
-// These are returned by the server in error responses as "e=<value>".
+// Server error values as defined in RFC-5802 and RFC-7677. These are returned
+// by the server in error responses as "e=<value>".
 const (
 	// ErrInvalidEncoding indicates the client message had invalid encoding
 	ErrInvalidEncoding = "e=invalid-encoding"
@@ -74,7 +74,8 @@ const (
 	ErrChannelBindingsDontMatch = "e=channel-bindings-dont-match"
 
 	// ErrServerDoesSupportChannelBinding indicates server does support channel
-	// binding. This is returned if a downgrade attack is detected.
+	// binding. This is returned if a downgrade attack is detected or if the
+	// client does not support binding and channel binding is required.
 	ErrServerDoesSupportChannelBinding = "e=server-does-support-channel-binding"
 
 	// ErrChannelBindingNotSupported indicates channel binding is not supported
@@ -100,18 +101,13 @@ const (
 func defaultNonceGenerator() string {
 	raw := make([]byte, 24)
 	nonce := make([]byte, base64.StdEncoding.EncodedLen(len(raw)))
-	rand.Read(raw)
+	_, _ = rand.Read(raw)
 	base64.StdEncoding.Encode(nonce, raw)
 	return string(nonce)
 }
 
 func encodeName(s string) string {
 	return strings.Replace(strings.Replace(s, "=", "=3D", -1), ",", "=2C", -1)
-}
-
-func decodeName(s string) (string, error) {
-	// TODO Check for = not followed by 2C or 3D
-	return strings.Replace(strings.Replace(s, "=2C", ",", -1), "=3D", "=", -1), nil
 }
 
 func computeHash(hg HashGeneratorFcn, b []byte) []byte {

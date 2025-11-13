@@ -34,8 +34,6 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-
-	return
 }
 
 func sendClientMsg(s string) string {

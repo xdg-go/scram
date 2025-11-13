@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Channel binding support for SCRAM-PLUS variants** (RFC 5929, RFC 9266)
 - `GetStoredCredentialsWithError()` method that returns errors from PBKDF2
   key derivation instead of panicking.
 - Support for Go 1.24+ stdlib `crypto/pbkdf2` package, which provides
