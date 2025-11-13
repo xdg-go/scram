@@ -58,6 +58,65 @@ type StoredCredentials struct {
 // StoredCredentials.
 type CredentialLookup func(string) (StoredCredentials, error)
 
+// ChannelBindingType represents the type of channel binding to use with
+// SCRAM-PLUS authentication variants.  The type must match one of the
+// channel binding types defined in RFC 5056, RFC 5929, or RFC 9266.
+type ChannelBindingType string
+
+const (
+	// ChannelBindingNone indicates no channel binding is used.
+	ChannelBindingNone ChannelBindingType = ""
+
+	// ChannelBindingTLSUnique uses the TLS Finished message from the first
+	// TLS handshake (RFC 5929).  This is not safe for TLS 1.3 and should
+	// generally be avoided.
+	ChannelBindingTLSUnique ChannelBindingType = "tls-unique"
+
+	// ChannelBindingTLSServerEndpoint uses a hash of the server's certificate
+	// (RFC 5929).  This works with all TLS versions including TLS 1.3.
+	ChannelBindingTLSServerEndpoint ChannelBindingType = "tls-server-end-point"
+
+	// ChannelBindingTLSExporter uses TLS Exported Keying Material with the
+	// label "EXPORTER-Channel-Binding" (RFC 9266).  This is the recommended
+	// channel binding type for TLS 1.3.
+	ChannelBindingTLSExporter ChannelBindingType = "tls-exporter"
+)
+
+// ChannelBinding holds the channel binding type and data for SCRAM-PLUS
+// authentication.  The Data field should contain the channel binding data
+// obtained from the TLS connection.  Applications are responsible for
+// extracting this data from their TLS implementation.
+//
+// For tls-exporter (recommended for TLS 1.3), the data should be obtained
+// using ExportKeyingMaterial with the label "EXPORTER-Channel-Binding" and
+// an empty context.
+//
+// For tls-server-end-point, the data should be a hash of the server's
+// certificate using an appropriate hash function based on the certificate's
+// signature algorithm.
+//
+// For tls-unique (deprecated), the data should be the TLS Finished message
+// from the first handshake.
+type ChannelBinding struct {
+	Type ChannelBindingType
+	Data []byte
+}
+
+// IsSupported returns true if the channel binding is configured with a
+// non-empty type and data.
+func (cb ChannelBinding) IsSupported() bool {
+	return cb.Type != ChannelBindingNone && len(cb.Data) > 0
+}
+
+// Matches returns true if this channel binding matches another channel
+// binding in both type and data.
+func (cb ChannelBinding) Matches(other ChannelBinding) bool {
+	if cb.Type != other.Type {
+		return false
+	}
+	return hmac.Equal(cb.Data, other.Data)
+}
+
 func defaultNonceGenerator() string {
 	raw := make([]byte, 24)
 	nonce := make([]byte, base64.StdEncoding.EncodedLen(len(raw)))

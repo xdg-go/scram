@@ -26,13 +26,14 @@ import (
 // for more.
 type Client struct {
 	sync.RWMutex
-	username string
-	password string
-	authzID  string
-	minIters int
-	nonceGen NonceGeneratorFcn
-	hashGen  HashGeneratorFcn
-	cache    map[KeyFactors]derivedKeys
+	username       string
+	password       string
+	authzID        string
+	minIters       int
+	nonceGen       NonceGeneratorFcn
+	hashGen        HashGeneratorFcn
+	cache          map[KeyFactors]derivedKeys
+	channelBinding ChannelBinding
 }
 
 func newClient(username, password, authzID string, fcn HashGeneratorFcn) *Client {
@@ -65,6 +66,27 @@ func (c *Client) WithNonceGenerator(ng NonceGeneratorFcn) *Client {
 	return c
 }
 
+// WithChannelBinding configures channel binding for SCRAM-PLUS authentication.
+// The ChannelBinding struct should contain the binding type and the channel
+// binding data obtained from the TLS connection.
+//
+// For tls-exporter (recommended for TLS 1.3), use:
+//
+//	data, _ := tlsConn.ExportKeyingMaterial("EXPORTER-Channel-Binding", nil, 32)
+//	client.WithChannelBinding(ChannelBinding{
+//	    Type: ChannelBindingTLSExporter,
+//	    Data: data,
+//	})
+//
+// Channel binding must be configured separately for each connection as the
+// binding data is connection-specific.
+func (c *Client) WithChannelBinding(cb ChannelBinding) *Client {
+	c.Lock()
+	defer c.Unlock()
+	c.channelBinding = cb
+	return c
+}
+
 // NewConversation constructs a client-side authentication conversation.
 // Conversations cannot be reused, so this must be called for each new
 // authentication attempt.
@@ -72,10 +94,11 @@ func (c *Client) NewConversation() *ClientConversation {
 	c.RLock()
 	defer c.RUnlock()
 	return &ClientConversation{
-		client:   c,
-		nonceGen: c.nonceGen,
-		hashGen:  c.hashGen,
-		minIters: c.minIters,
+		client:         c,
+		nonceGen:       c.nonceGen,
+		hashGen:        c.hashGen,
+		minIters:       c.minIters,
+		channelBinding: c.channelBinding,
 	}
 }
 
