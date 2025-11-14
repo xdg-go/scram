@@ -93,10 +93,29 @@ func (c *Client) getDerivedKeys(kf KeyFactors) (derivedKeys, error) {
 }
 
 // GetStoredCredentials takes a salt and iteration count structure and
-// provides the values that must be stored by a server to authentication a
+// provides the values that must be stored by a server to authenticate a
 // user.  These values are what the Server credential lookup function must
 // return for a given username.
-func (c *Client) GetStoredCredentials(kf KeyFactors) (StoredCredentials, error) {
+//
+// Deprecated: Use GetStoredCredentialsWithError for proper error handling.
+// This method panics if PBKDF2 key derivation fails, which should only
+// occur with invalid KeyFactors parameters.
+func (c *Client) GetStoredCredentials(kf KeyFactors) StoredCredentials {
+	creds, err := c.GetStoredCredentialsWithError(kf)
+	if err != nil {
+		panic("scram: GetStoredCredentials failed: " + err.Error())
+	}
+	return creds
+}
+
+// GetStoredCredentialsWithError takes a salt and iteration count structure and
+// provides the values that must be stored by a server to authenticate a
+// user.  These values are what the Server credential lookup function must
+// return for a given username.
+//
+// Returns an error if PBKDF2 key derivation fails, which can occur with
+// invalid parameters in Go 1.24+ (e.g., invalid iteration counts or key lengths).
+func (c *Client) GetStoredCredentialsWithError(kf KeyFactors) (StoredCredentials, error) {
 	dk, err := c.getDerivedKeys(kf)
 	return StoredCredentials{
 		KeyFactors: kf,
