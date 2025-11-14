@@ -1,6 +1,6 @@
 module github.com/xdg-go/scram
 
-go 1.11
+go 1.18
 
 require (
 	github.com/xdg-go/pbkdf2 v1.0.0

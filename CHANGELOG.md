@@ -11,6 +11,7 @@
 
 ### Changed
 
+- Minimum Go version bumped from 1.11 to 1.18.
 - Migrated from `github.com/xdg-go/pbkdf2` to stdlib `crypto/pbkdf2` on
   Go 1.24+. Legacy Go versions (<1.24) continue using the external
   library via build tags for backward compatibility.
