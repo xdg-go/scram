@@ -55,16 +55,16 @@ Updates RFCs 5801, 5802, 5929, and 7677 to prefer tls-exporter for TLS 1.3.
 ### Key Integration Points
 
 1. **scram.go**: Hash generator factory pattern
-   - Add PLUS variants: SHA1PLUS, SHA256PLUS, SHA512PLUS
-   - OR: Keep existing and pass channel binding via Client/Server constructors
+   - Keep existing SHA1, SHA256, SHA512 (no separate PLUS variants needed)
+   - Channel binding configured via WithChannelBinding() method
 
 2. **common.go**: Shared types and utilities
-   - Add ChannelBinding type/struct
-   - Add ChannelBindingCallback function type
+   - Add ChannelBindingType enumeration
+   - Add ChannelBinding struct
 
 3. **client.go**: Client configuration
-   - Add channel binding configuration (type + data callback)
-   - Update NewClient/NewClientUnprepped to accept channel binding
+   - Add channel binding configuration (type + data)
+   - Add WithChannelBinding() method for configuration
 
 4. **server.go**: Server configuration
    - Add channel binding configuration (expected type + data)
@@ -93,30 +93,25 @@ Updates RFCs 5801, 5802, 5929, and 7677 to prefer tls-exporter for TLS 1.3.
 type ChannelBindingType string
 
 const (
-    ChannelBindingNone            ChannelBindingType = ""
-    ChannelBindingTLSUnique       ChannelBindingType = "tls-unique"
+    ChannelBindingNone              ChannelBindingType = ""
+    ChannelBindingTLSUnique         ChannelBindingType = "tls-unique"
     ChannelBindingTLSServerEndpoint ChannelBindingType = "tls-server-end-point"
-    ChannelBindingTLSExporter     ChannelBindingType = "tls-exporter"
+    ChannelBindingTLSExporter       ChannelBindingType = "tls-exporter"
 )
 ```
 
 2. Add channel binding configuration struct:
 ```go
+// ChannelBinding holds the channel binding type and data for SCRAM-PLUS authentication.
+// The Data field should contain the channel binding data obtained from the TLS connection.
+// Applications are responsible for extracting this data from their TLS implementation.
 type ChannelBinding struct {
     Type ChannelBindingType
     Data []byte
 }
 ```
 
-3. Add channel binding callback type:
-```go
-// ChannelBindingCallback returns channel binding data for a given type.
-// Applications must implement this to provide TLS-layer channel binding data.
-// Returns nil if the requested binding type is not available.
-type ChannelBindingCallback func(ChannelBindingType) []byte
-```
-
-4. Add helper functions:
+3. Add helper functions:
 ```go
 func (cb ChannelBinding) IsSupported() bool
 func (cb ChannelBinding) Matches(other ChannelBinding) bool
@@ -495,7 +490,7 @@ func (sc *ServerConversation) finalMsg(c2 string) (string, error) {
 
 ### 2. Channel Binding Data Source
 
-**Decision**: Require application to provide channel binding data via `ChannelBinding` struct, rather than having library extract it from TLS connection.
+**Decision**: Require application to provide channel binding data via `ChannelBinding` struct, rather than having library extract it from TLS connection or using a callback function.
 
 **Rationale**:
 - Library is TLS-implementation agnostic
@@ -503,6 +498,8 @@ func (sc *ServerConversation) finalMsg(c2 string) (string, error) {
 - Application already has access to TLS connection
 - Keeps library dependencies minimal
 - Follows principle of "mechanism, not policy"
+- Channel binding data is static per conversation (no need for callback)
+- Simpler API with direct data passing
 
 ### 3. Backward Compatibility
 
