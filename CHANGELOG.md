@@ -4,6 +4,15 @@
 
 ### Added
 
+- **Channel binding support for SCRAM-PLUS variants** (RFC 5929, RFC 9266)
+  - Support for `tls-unique` channel binding (RFC 5929)
+  - Support for `tls-server-end-point` channel binding (RFC 5929)
+  - Support for `tls-exporter` channel binding (RFC 9266) - recommended for TLS 1.3
+- New `ChannelBinding` type for configuring channel binding
+- New `ChannelBindingType` enumeration with constants for all supported binding types
+- `WithChannelBinding()` method on `Client` for SCRAM-PLUS authentication
+- `WithChannelBinding()` method on `Server` for validating channel binding
+- Comprehensive test suite for channel binding functionality
 - `GetStoredCredentialsWithError()` method that returns errors from PBKDF2
   key derivation instead of panicking.
 - Support for Go 1.24+ stdlib `crypto/pbkdf2` package, which provides
@@ -16,6 +25,10 @@
   Go 1.24+. Legacy Go versions (<1.24) continue using the external
   library via build tags for backward compatibility.
 - Internal error handling improved for PBKDF2 key derivation failures.
+- Parser now accepts and validates `p=<cb-type>` gs2-cbind-flag
+- Client and server conversations properly handle channel binding data
+- README updated with channel binding examples
+- Package documentation updated to describe channel binding support
 
 ### Deprecated
 
@@ -23,6 +36,12 @@
   `GetStoredCredentialsWithError()`. The old method panics on PBKDF2
   errors to maintain backward compatibility but will be removed in a
   future major version.
+
+### Security
+
+- Channel binding prevents man-in-the-middle attacks by cryptographically binding
+  SCRAM authentication to the underlying TLS connection
+- Constant-time comparison used for all channel binding data validation
 
 ### Notes
 

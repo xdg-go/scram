@@ -13,9 +13,10 @@ import "sync"
 // Generally, this can be persistent within an application.
 type Server struct {
 	sync.RWMutex
-	credentialCB CredentialLookup
-	nonceGen     NonceGeneratorFcn
-	hashGen      HashGeneratorFcn
+	credentialCB   CredentialLookup
+	nonceGen       NonceGeneratorFcn
+	hashGen        HashGeneratorFcn
+	channelBinding ChannelBinding
 }
 
 func newServer(cl CredentialLookup, fcn HashGeneratorFcn) (*Server, error) {
@@ -36,6 +37,23 @@ func (s *Server) WithNonceGenerator(ng NonceGeneratorFcn) *Server {
 	return s
 }
 
+// WithChannelBinding configures the expected channel binding for SCRAM-PLUS
+// authentication.  When configured, the server will validate that clients
+// using channel binding provide matching channel binding data.
+//
+// The ChannelBinding struct should contain the same binding type and data
+// that is available to clients.  For tls-exporter, this would be the exported
+// keying material from the TLS connection.
+//
+// Channel binding must be configured separately for each connection as the
+// binding data is connection-specific.
+func (s *Server) WithChannelBinding(cb ChannelBinding) *Server {
+	s.Lock()
+	defer s.Unlock()
+	s.channelBinding = cb
+	return s
+}
+
 // NewConversation constructs a server-side authentication conversation.
 // Conversations cannot be reused, so this must be called for each new
 // authentication attempt.
@@ -43,8 +61,9 @@ func (s *Server) NewConversation() *ServerConversation {
 	s.RLock()
 	defer s.RUnlock()
 	return &ServerConversation{
-		nonceGen:     s.nonceGen,
-		hashGen:      s.hashGen,
-		credentialCB: s.credentialCB,
+		nonceGen:       s.nonceGen,
+		hashGen:        s.hashGen,
+		credentialCB:   s.credentialCB,
+		channelBinding: s.channelBinding,
 	}
 }

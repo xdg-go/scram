@@ -5,8 +5,8 @@
 // a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
 // Package scram provides client and server implementations of the Salted
-// Challenge Response Authentication Mechanism (SCRAM) described in RFC-5802
-// and RFC-7677.
+// Challenge Response Authentication Mechanism (SCRAM) described in RFC-5802,
+// RFC-7677, and RFC-9266.
 //
 // Usage
 //
@@ -23,4 +23,37 @@
 //
 // These objects are used to construct ClientConversation or
 // ServerConversation objects that are used to carry out authentication.
+//
+// Channel Binding (SCRAM-PLUS)
+//
+// The scram package supports channel binding for SCRAM-PLUS authentication
+// variants as described in RFC-5802, RFC-5929, and RFC-9266. Channel binding
+// cryptographically binds the SCRAM authentication to an underlying TLS
+// connection, preventing man-in-the-middle attacks.
+//
+// To use channel binding, configure the Client or Server with channel binding
+// data obtained from the TLS connection:
+//
+//     // Client example with tls-exporter (TLS 1.3)
+//     client, _ := scram.SHA256.NewClient(username, password, "")
+//     cbData, _ := tlsConn.ExportKeyingMaterial("EXPORTER-Channel-Binding", nil, 32)
+//     client.WithChannelBinding(scram.ChannelBinding{
+//         Type: scram.ChannelBindingTLSExporter,
+//         Data: cbData,
+//     })
+//
+//     // Server must be configured with the same channel binding
+//     server, _ := scram.SHA256.NewServer(credentialLookupFcn)
+//     server.WithChannelBinding(scram.ChannelBinding{
+//         Type: scram.ChannelBindingTLSExporter,
+//         Data: cbData,
+//     })
+//
+// Supported channel binding types:
+//   - ChannelBindingTLSUnique: Uses TLS Finished message (RFC 5929, TLS ≤ 1.2)
+//   - ChannelBindingTLSServerEndpoint: Uses server certificate hash (RFC 5929, all TLS versions)
+//   - ChannelBindingTLSExporter: Uses exported keying material (RFC 9266, recommended for TLS 1.3)
+//
+// Channel binding must be configured separately for each TLS connection as the
+// binding data is connection-specific.
 package scram

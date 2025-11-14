@@ -25,18 +25,21 @@ const (
 // conversation with a client.  A new conversation must be created for
 // each authentication attempt.
 type ServerConversation struct {
-	nonceGen     NonceGeneratorFcn
-	hashGen      HashGeneratorFcn
-	credentialCB CredentialLookup
-	state        serverState
-	credential   StoredCredentials
-	valid        bool
-	gs2Header    string
-	username     string
-	authzID      string
-	nonce        string
-	c1b          string
-	s1           string
+	nonceGen         NonceGeneratorFcn
+	hashGen          HashGeneratorFcn
+	credentialCB     CredentialLookup
+	state            serverState
+	credential       StoredCredentials
+	valid            bool
+	gs2Header        string
+	username         string
+	authzID          string
+	nonce            string
+	c1b              string
+	s1               string
+	channelBinding   ChannelBinding
+	clientCBType     string
+	clientCBFlag     string
 }
 
 // Step takes a string provided from a client and attempts to move the
@@ -89,8 +92,26 @@ func (sc *ServerConversation) firstMsg(c1 string) (string, error) {
 	}
 
 	sc.gs2Header = msg.gs2Header
+	sc.clientCBFlag = msg.gs2BindFlag
+	sc.clientCBType = msg.channelBinding
 	sc.username = msg.username
 	sc.authzID = msg.authzID
+
+	// Validate channel binding negotiation
+	if sc.clientCBFlag == "p" {
+		// Client requires channel binding
+		if !sc.channelBinding.IsSupported() {
+			sc.state = serverDone
+			return "e=channel-binding-not-supported",
+				errors.New("client requires channel binding but server doesn't support it")
+		}
+		if ChannelBindingType(sc.clientCBType) != sc.channelBinding.Type {
+			sc.state = serverDone
+			return "e=unsupported-channel-binding-type",
+				fmt.Errorf("client requested %s but server only supports %s",
+					sc.clientCBType, sc.channelBinding.Type)
+		}
+	}
 
 	sc.credential, err = sc.credentialCB(msg.username)
 	if err != nil {
@@ -117,12 +138,20 @@ func (sc *ServerConversation) finalMsg(c2 string) (string, error) {
 		return "", err
 	}
 
-	// Check channel binding matches what we expect; in this case, we expect
-	// just the gs2 header we received as we don't support channel binding
-	// with a data payload.  If we add binding, we need to independently
-	// compute the header to match here.
-	if string(msg.cbind) != sc.gs2Header {
-		return "e=channel-bindings-dont-match", fmt.Errorf("channel binding received '%s' doesn't match expected '%s'", msg.cbind, sc.gs2Header)
+	// Check channel binding data matches what we expect
+	var expectedCBind []byte
+	if sc.clientCBFlag == "p" {
+		// Client used channel binding - expect gs2 header + channel binding data
+		expectedCBind = append([]byte(sc.gs2Header), sc.channelBinding.Data...)
+	} else {
+		// Client didn't use channel binding - just expect gs2 header
+		expectedCBind = []byte(sc.gs2Header)
+	}
+
+	if !hmac.Equal(msg.cbind, expectedCBind) {
+		return "e=channel-bindings-dont-match",
+			fmt.Errorf("channel binding mismatch: expected %x, got %x",
+				expectedCBind, msg.cbind)
 	}
 
 	// Check nonce received matches what we sent
