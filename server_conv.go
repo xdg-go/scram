@@ -95,7 +95,7 @@ func (sc *ServerConversation) firstMsg(c1 string) (string, error) {
 	sc.credential, err = sc.credentialCB(msg.username)
 	if err != nil {
 		sc.state = serverDone
-		return "e=unknown-user", err
+		return ErrUnknownUser, err
 	}
 
 	sc.nonce = msg.nonce + sc.nonceGen()
@@ -122,12 +122,12 @@ func (sc *ServerConversation) finalMsg(c2 string) (string, error) {
 	// with a data payload.  If we add binding, we need to independently
 	// compute the header to match here.
 	if string(msg.cbind) != sc.gs2Header {
-		return "e=channel-bindings-dont-match", fmt.Errorf("channel binding received '%s' doesn't match expected '%s'", msg.cbind, sc.gs2Header)
+		return ErrChannelBindingsDontMatch, fmt.Errorf("channel binding received '%s' doesn't match expected '%s'", msg.cbind, sc.gs2Header)
 	}
 
 	// Check nonce received matches what we sent
 	if msg.nonce != sc.nonce {
-		return "e=other-error", errors.New("nonce received did not match nonce sent")
+		return ErrOtherError, errors.New("nonce received did not match nonce sent")
 	}
 
 	// Create auth message
@@ -140,7 +140,7 @@ func (sc *ServerConversation) finalMsg(c2 string) (string, error) {
 
 	// Compare with constant-time function
 	if !hmac.Equal(storedKey, sc.credential.StoredKey) {
-		return "e=invalid-proof", errors.New("challenge proof invalid")
+		return ErrInvalidProof, errors.New("challenge proof invalid")
 	}
 
 	sc.valid = true
