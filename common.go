@@ -10,6 +10,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"strings"
 )
 
@@ -122,11 +123,13 @@ func computeHMAC(hg HashGeneratorFcn, key, data []byte) []byte {
 	return mac.Sum(nil)
 }
 
-func xorBytes(a, b []byte) []byte {
-	// TODO check a & b are same length, or just xor to smallest
+func xorBytes(a, b []byte) ([]byte, error) {
+	if len(a) != len(b) {
+		return nil, errors.New("internal error: xorBytes arguments must have equal length")
+	}
 	xor := make([]byte, len(a))
 	for i := range a {
 		xor[i] = a[i] ^ b[i]
 	}
-	return xor
+	return xor, nil
 }

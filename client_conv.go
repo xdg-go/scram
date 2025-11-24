@@ -128,7 +128,10 @@ func (cc *ClientConversation) finalMsg(s1 string) (string, error) {
 
 	// Create proof as clientkey XOR clientsignature
 	clientSignature := computeHMAC(cc.hashGen, dk.StoredKey, []byte(authMsg))
-	clientProof := xorBytes(dk.ClientKey, clientSignature)
+	clientProof, err := xorBytes(dk.ClientKey, clientSignature)
+	if err != nil {
+		return "", err
+	}
 	proof := base64.StdEncoding.EncodeToString(clientProof)
 
 	// Cache ServerSignature for later validation

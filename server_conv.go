@@ -214,7 +214,10 @@ func (sc *ServerConversation) finalMsg(c2 string) (string, error) {
 
 	// Retrieve ClientKey from proof and verify it
 	clientSignature := computeHMAC(sc.hashGen, sc.credential.StoredKey, []byte(authMsg))
-	clientKey := xorBytes([]byte(msg.proof), clientSignature)
+	clientKey, err := xorBytes([]byte(msg.proof), clientSignature)
+	if err != nil {
+		return ErrOtherError, err
+	}
 	storedKey := computeHash(sc.hashGen, clientKey)
 
 	// Compare with constant-time function
