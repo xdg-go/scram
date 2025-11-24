@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.2.0 - 2025-11-24
 
 ### Added
 
