@@ -141,3 +141,76 @@ func genServerSubTest(c TestCase) func(t *testing.T) {
 		}
 	}
 }
+
+// A full client-server conversation must succeed for usernames and authzIDs
+// that the client escapes per RFC 5802 section 5.1 ("=" as "=3D" and "," as
+// "=2C"): the server must unescape them before the credential lookup and
+// when reporting Username()/AuthzID().
+func TestInteropEscapedUsername(t *testing.T) {
+	for _, tc := range []struct {
+		username string
+		authzID  string
+	}{
+		{"user", ""},    // control: no escapes
+		{"user=x", ""},  // '=' is escaped as =3D on the wire
+		{"a,b", ""},     // ',' is escaped as =2C on the wire
+		{"u=x,y", ""},   // both
+		{"user", "a=x"}, // escaped authzID
+	} {
+		client, err := SHA1.NewClient(tc.username, "pencil", tc.authzID)
+		if err != nil {
+			t.Fatalf("username %q: NewClient error: %v", tc.username, err)
+		}
+
+		stored, err := client.GetStoredCredentialsWithError(KeyFactors{Salt: "salt", Iters: 4096})
+		if err != nil {
+			t.Fatalf("username %q: GetStoredCredentialsWithError error: %v", tc.username, err)
+		}
+
+		server, err := SHA1.NewServer(func(s string) (StoredCredentials, error) {
+			if s == tc.username {
+				return stored, nil
+			}
+			return StoredCredentials{}, fmt.Errorf("Unknown user %q", s)
+		})
+		if err != nil {
+			t.Fatalf("username %q: NewServer error: %v", tc.username, err)
+		}
+
+		sc := server.NewConversation()
+		cc := client.NewConversation()
+
+		c1, err := cc.Step("")
+		if err != nil {
+			t.Fatalf("username %q: client first step error: %v", tc.username, err)
+		}
+		s1, err := sc.Step(c1)
+		if err != nil {
+			t.Errorf("username %q: server rejected client-first (%s): %v", tc.username, s1, err)
+			continue
+		}
+		c2, err := cc.Step(s1)
+		if err != nil {
+			t.Errorf("username %q: client rejected server-first: %v", tc.username, err)
+			continue
+		}
+		s2, err := sc.Step(c2)
+		if err != nil {
+			t.Errorf("username %q: server rejected client-final (%s): %v", tc.username, s2, err)
+			continue
+		}
+		if _, err := cc.Step(s2); err != nil {
+			t.Errorf("username %q: client rejected server-final: %v", tc.username, err)
+			continue
+		}
+		if !sc.Valid() || !cc.Valid() {
+			t.Errorf("username %q: expected valid conversation, got server=%v client=%v", tc.username, sc.Valid(), cc.Valid())
+		}
+		if sc.Username() != tc.username {
+			t.Errorf("Username() = %q, want %q", sc.Username(), tc.username)
+		}
+		if sc.AuthzID() != tc.authzID {
+			t.Errorf("AuthzID() = %q, want %q", sc.AuthzID(), tc.authzID)
+		}
+	}
+}
