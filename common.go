@@ -111,6 +111,16 @@ func encodeName(s string) string {
 	return strings.Replace(strings.Replace(s, "=", "=3D", -1), ",", "=2C", -1)
 }
 
+// decodeName reverses encodeName, resolving the "=3D" and "=2C" escapes
+// that RFC 5802 section 5.1 defines for '=' and ',' in the username and
+// authzid of the client-first message. strings.Replacer scans left to
+// right, so escapes are resolved without ever matching a literal sequence.
+var nameEscapes = strings.NewReplacer("=2C", ",", "=3D", "=")
+
+func decodeName(s string) string {
+	return nameEscapes.Replace(s)
+}
+
 func computeHash(hg HashGeneratorFcn, b []byte) []byte {
 	h := hg()
 	h.Write(b)

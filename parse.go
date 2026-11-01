@@ -117,6 +117,8 @@ func parseClientFirst(c1 string) (msg c1Msg, err error) {
 		if err != nil {
 			return
 		}
+		// RFC 5802 section 5.1: resolve the =3D / =2C escapes.
+		msg.authzID = decodeName(msg.authzID)
 	}
 
 	// Check for unsupported extensions field "m".
@@ -129,6 +131,8 @@ func parseClientFirst(c1 string) (msg c1Msg, err error) {
 	if err != nil {
 		return
 	}
+	// RFC 5802 section 5.1: resolve the =3D / =2C escapes.
+	msg.username = decodeName(msg.username)
 
 	msg.nonce, err = parseField(fields[3], "r")
 	if err != nil {
