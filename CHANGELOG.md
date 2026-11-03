@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Security
+
+- `NewClient` no longer includes the plaintext password, or the rejected
+  character, in the error it returns when SASLprep rejects the password.
+
 ### Fixed
 
 - Server now decodes the `=2C` and `=3D` escapes in the client-first
