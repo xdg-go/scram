@@ -141,3 +141,160 @@ func genServerSubTest(c TestCase) func(t *testing.T) {
 		}
 	}
 }
+
+// RFC 5802 §5.1: the server must decode "=2C" and "=3D" in the username and
+// authzid before the credential lookup.
+func TestServerDecodesEscapedNames(t *testing.T) {
+	cases := []struct {
+		label       string
+		c1          string
+		wantUser    string
+		wantAuthzID string
+	}{
+		{label: "plain", c1: "n,,n=user,r=nonce", wantUser: "user"},
+		{label: "equals", c1: "n,,n=user=3Dx,r=nonce", wantUser: "user=x"},
+		{label: "comma", c1: "n,,n=a=2Cb,r=nonce", wantUser: "a,b"},
+		{label: "literal escape text", c1: "n,,n=x=3D2C,r=nonce", wantUser: "x=2C"},
+		{label: "authzid", c1: "n,a=a=3Dx=2Cy,n=user,r=nonce", wantUser: "user", wantAuthzID: "a=x,y"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.label, func(t *testing.T) {
+			var lookedUp string
+			server, err := SHA256.NewServer(func(name string) (StoredCredentials, error) {
+				lookedUp = name
+				return StoredCredentials{KeyFactors: KeyFactors{Salt: "salt", Iters: 4096}}, nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			conv := server.NewConversation()
+			if _, err := conv.Step(c.c1); err != nil {
+				t.Fatalf("Step(%q): %v", c.c1, err)
+			}
+
+			if lookedUp != c.wantUser {
+				t.Errorf("lookup got %q, want %q", lookedUp, c.wantUser)
+			}
+			if got := conv.Username(); got != c.wantUser {
+				t.Errorf("Username() = %q, want %q", got, c.wantUser)
+			}
+			if got := conv.AuthzID(); got != c.wantAuthzID {
+				t.Errorf("AuthzID() = %q, want %q", got, c.wantAuthzID)
+			}
+		})
+	}
+}
+
+// RFC 5802 §5.1: a username with '=' not followed by "2C" or "3D" MUST fail.
+// The server must reject it before the credential lookup.
+func TestServerRejectsMalformedNameEscapes(t *testing.T) {
+	names := []string{"=", "=3", "a=", "a=b", "=2c", "=3d", "=41", "==3D", "=3D="}
+
+	cases := []struct {
+		field     string
+		c1        func(name string) string
+		wantReply string
+	}{
+		{
+			field:     "username",
+			c1:        func(name string) string { return "n,,n=" + name + ",r=nonce" },
+			wantReply: ErrInvalidUsernameEncoding,
+		},
+		{
+			field:     "authzid",
+			c1:        func(name string) string { return "n,a=" + name + ",n=user,r=nonce" },
+			wantReply: ErrInvalidEncoding,
+		},
+	}
+
+	for _, c := range cases {
+		for _, name := range names {
+			t.Run(c.field+"/"+name, func(t *testing.T) {
+				lookupCalled := false
+				server, err := SHA256.NewServer(func(string) (StoredCredentials, error) {
+					lookupCalled = true
+					return StoredCredentials{KeyFactors: KeyFactors{Salt: "salt", Iters: 4096}}, nil
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				conv := server.NewConversation()
+				c1 := c.c1(name)
+				reply, err := conv.Step(c1)
+				if err == nil {
+					t.Fatalf("Step(%q): expected error", c1)
+				}
+				if reply != c.wantReply {
+					t.Errorf("Step(%q) reply = %q, want %q", c1, reply, c.wantReply)
+				}
+				if lookupCalled {
+					t.Errorf("Step(%q): credential lookup was called", c1)
+				}
+				if !conv.Done() || conv.Valid() {
+					t.Errorf("Step(%q): conversation should be done and invalid", c1)
+				}
+			})
+		}
+	}
+}
+
+// Full client-server conversations with names that need escaping. The server's
+// lookup must receive the SASLprepped, decoded username, and proofs must still
+// verify because the AuthMessage uses the escaped wire form.
+func TestInteropEscapedNames(t *testing.T) {
+	cases := []struct {
+		label       string
+		username    string
+		authzID     string
+		wantUser    string
+		wantAuthzID string
+	}{
+		{label: "plain", username: "user", wantUser: "user"},
+		{label: "equals", username: "user=x", wantUser: "user=x"},
+		{label: "comma", username: "a,b", wantUser: "a,b"},
+		{label: "both", username: "u=x,y", wantUser: "u=x,y"},
+		{label: "literal escape text", username: "x=3D2C", wantUser: "x=3D2C"},
+		{label: "authzid", username: "user", authzID: "a=x,y", wantUser: "user", wantAuthzID: "a=x,y"},
+		// SASLprep (NFKC) maps fullwidth U+FF1D/U+FF0C to '=' and ',' before
+		// the client escapes them.
+		{label: "fullwidth equals", username: "a＝b", wantUser: "a=b"},
+		{label: "fullwidth comma", username: "a，b", wantUser: "a,b"},
+		{label: "fullwidth authzid", username: "user", authzID: "a＝b，c", wantUser: "user", wantAuthzID: "a=b,c"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.label, func(t *testing.T) {
+			client, err := SHA256.NewClient(c.username, "pencil", c.authzID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stored, err := client.GetStoredCredentialsWithError(KeyFactors{Salt: "salt", Iters: 4096})
+			if err != nil {
+				t.Fatal(err)
+			}
+			server, err := SHA256.NewServer(func(name string) (StoredCredentials, error) {
+				if name != c.wantUser {
+					return StoredCredentials{}, fmt.Errorf("lookup got %q, want %q", name, c.wantUser)
+				}
+				return stored, nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			cc, sc := client.NewConversation(), server.NewConversation()
+			step, err := runFullAuthFlow(cc, sc)
+			assertFinishedSuccessfully(t, step, err)
+
+			if got := sc.Username(); got != c.wantUser {
+				t.Errorf("Username() = %q, want %q", got, c.wantUser)
+			}
+			if got := sc.AuthzID(); got != c.wantAuthzID {
+				t.Errorf("AuthzID() = %q, want %q", got, c.wantAuthzID)
+			}
+		})
+	}
+}

@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## Unreleased
+
+### Fixed
+
+- Server now decodes the `=2C` and `=3D` escapes in the client-first
+  username and authzid (RFC 5802 §5.1). Previously, the `CredentialLookup`
+  callback, `Username()`, and `AuthzID()` received the escaped form, so
+  users with `,` or `=` in their names failed with `e=unknown-user`.
+- Server now rejects a username containing `=` not followed by `2C` or `3D`
+  with `e=invalid-username-encoding`, and a malformed authzid with
+  `e=invalid-encoding`.
+
+### Notes
+
+- Behavior change: a `CredentialLookup` that matched the escaped form (e.g.
+  `"a=2Cb"`) must now match the decoded name (`"a,b"`).
+
 ## v1.2.0 - 2025-11-24
 
 ### Added

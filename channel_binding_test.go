@@ -264,6 +264,17 @@ func TestChannelBindingGS2Header(t *testing.T) {
 			expectedPrefix: "p=tls-exporter,a=admin,",
 		},
 		{
+			name: "With tls-exporter channel binding - flag p, with escaped authzID",
+			setupConv: func(client *Client) *ClientConversation {
+				return client.NewConversationWithChannelBinding(ChannelBinding{
+					Type: ChannelBindingTLSExporter,
+					Data: []byte{0x01, 0x02, 0x03},
+				})
+			},
+			authzID:        "a=b,c",
+			expectedPrefix: "p=tls-exporter,a=a=3Db=2Cc,",
+		},
+		{
 			name:           "Advertising channel binding - flag y",
 			setupConv:      func(client *Client) *ClientConversation { return client.NewConversationAdvertisingChannelBinding() },
 			expectedPrefix: "y,,",
@@ -318,6 +329,26 @@ func TestChannelBinding_Success_AllTypes(t *testing.T) {
 			step, err := runFullAuthFlow(clientConv, serverConv)
 			assertFinishedSuccessfully(t, step, err)
 		})
+	}
+}
+
+// The c= attribute carries the raw gs2-header, which contains the escaped
+// authzid. The server must verify it against the wire form, not the decoded
+// AuthzID().
+func TestChannelBinding_Success_EscapedAuthzID(t *testing.T) {
+	cb := ChannelBinding{Type: ChannelBindingTLSExporter, Data: []byte("test-data")}
+
+	client, err := SHA256.NewClient("user", "pencil", "a=b,c")
+	assertNoError(t, err)
+	server, err := SHA256.NewServer(mockCredLookupFcn("pencil"))
+	assertNoError(t, err)
+
+	clientConv, serverConv := setupConversations(t, client, server, cb, cb, true)
+	step, err := runFullAuthFlow(clientConv, serverConv)
+	assertFinishedSuccessfully(t, step, err)
+
+	if got := serverConv.AuthzID(); got != "a=b,c" {
+		t.Errorf("AuthzID() = %q, want %q", got, "a=b,c")
 	}
 }
 
