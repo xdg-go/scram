@@ -2,6 +2,9 @@ on:
   push:
     branches: [master]
   pull_request:
+  # Catch breakage from new Go releases (via 'stable') on an idle repo
+  schedule:
+    - cron: '0 6 1 * *'
 
 name: CI
 
@@ -21,14 +24,23 @@ jobs:
 
     strategy:
       matrix:
-        go-version: [1.18.x, 1.25.x]
+        go-version: [1.18.x, oldstable, stable]
         os: [ubuntu-latest]
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
+      with:
+        persist-credentials: false
     - name: Install Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v7
       with:
         go-version: ${{ matrix.go-version }}
+    # gofmt output can differ across Go versions; check against current only
+    - name: Check formatting
+      if: matrix.go-version == 'stable'
+      run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+    - name: Vet
+      if: matrix.go-version == 'stable'
+      run: go vet ./...
     - name: Test
       run: go test -race ./...
