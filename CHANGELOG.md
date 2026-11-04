@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## Unreleased
+
+### Changed
+
+- PBKDF2 key derivation now always uses the stdlib `crypto/pbkdf2` package, a
+  FIPS 140-3 certified implementation.
+- Minimum Go version bumped from 1.18 to 1.24.
+- Removed dependency `github.com/xdg-go/pbkdf2`.
+
 ## v1.3.0 - 2026-11-03
 
 ### Security

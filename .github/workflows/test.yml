@@ -24,7 +24,7 @@ jobs:
 
     strategy:
       matrix:
-        go-version: [1.18.x, oldstable, stable]
+        go-version: [1.24.x, oldstable, stable]
         os: [ubuntu-latest]
     steps:
     - name: Checkout code
